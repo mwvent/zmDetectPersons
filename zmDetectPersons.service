@@ -1,1 +1,11 @@
-/etc/systemd/system/zmDetectPersons.service
+[Unit]
+Description=Search Zoneminder Videos For People
+
+[Service]
+Type=simple
+ExecStart=/opt/zmDetectPersons/service.sh
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target
