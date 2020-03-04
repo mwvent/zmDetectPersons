@@ -5,9 +5,8 @@ import time
 
 # Config
 debugOutput = True
-readFPS = 2          #Desired number of frames to analyze per second of video
-confThreshold = 0.25  #DNN Confidence threshold
-nmsThreshold = 0.4   #DNN Non-maximum suppression threshold
+readFPS = 6          #Desired number of frames to analyze per second of video
+confThreshold = 0.22  #DNN Confidence threshold
 inpWidth = 416       #DNN Width of network's input image
 inpHeight = 416      #DNN Height of network's input image
 dnn_target = cv.dnn.DNN_TARGET_CPU # cv.dnn.DNN_TARGET_CPU / cv.dnn.DNN_TARGET_OPENCL
@@ -95,6 +94,7 @@ while True:
         framesskipped = 0
         havevideo = True
         personDetected = False
+        maxPersonConfidence = 0
         # frame Skip calc
         videoFPS = int(cap.get(cv.CAP_PROP_FPS))
         if readFPS > videoFPS or readFPS == videoFPS :
@@ -130,6 +130,7 @@ while True:
                 timeTaken = str(time.process_time() - processingStartTime)
                 logTxt = timeS + " Processed " + str(framesread)
                 logTxt = logTxt + " frames skipped " + str(framesskipped)
+                logTxt = logTxt + " max confidence " + str(maxPersonConfidence) 
                 logTxt = logTxt + " time taken " + timeTaken  + "\n"
                 sys.stderr.write( logTxt )
             newNotes = currentnotes + " HasPerson: 0"
@@ -165,7 +166,8 @@ while True:
 
     # Magic copied and pasted dnn stuff that I dont understand
     # Create a 4D blob from a frame.
-    blob = cv.dnn.blobFromImage(frame, 1/255, (inpWidth, inpHeight), [0,0,0], 1, crop=False)
+    #blob = cv.dnn.blobFromImage(frame, 1/255, (inpWidth, inpHeight), [0,0,0], 1, crop=False)
+    blob = cv.dnn.blobFromImage(frame, 1/255, (inpWidth, inpHeight), swapRB=True, crop=False)
     # Sets the input to the network
     net.setInput(blob)
     # Runs the forward pass to get output of the output layers
@@ -175,9 +177,11 @@ while True:
             scores = detection[5:]
             classId = np.argmax(scores)
             confidence = scores[classId]
-            if confidence > confThreshold:
+            if confidence > confThreshold :
                 if classes[classId] == "person":
                     personDetected = True
+                    if debugOutput and confidence > maxPersonConfidence:
+                        maxPersonConfidence = confidence
 
     # Found a person - tag the video and stop processing
     if personDetected :
@@ -193,6 +197,7 @@ while True:
         if debugOutput :
             timeTaken = str(time.process_time() - processingStartTime)
             timeS = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            sys.stderr.write(timeS+" Found Person - Processed " + str(framesread) + " frames " + " time taken " + timeTaken  + "\n")
+            confS = "conf: " + str(maxPersonConfidence)
+            sys.stderr.write(timeS+" Found Person " + confS  + "- Processed " + str(framesread) + " frames " + " time taken " + timeTaken  + "\n")
         continue
 
